@@ -160,24 +160,16 @@ export function SubmitForm() {
               <div className="flex justify-center mb-4">
                 <div className="bg-white p-3 rounded-xl shadow-[0_0_30px_rgba(255,255,255,0.1)]">
                   <img
-                    src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://www.paypal.com/ncp/payment/4ZCXGAS75CST6"
-                    alt="PayPal QR Code - $5"
-                    width={120}
-                    height={120}
+                    src="/images/paypal-qr.png"
+                    alt="Ariladia REFORCEMENT Scoring Initiative - PayPal QR Code"
+                    width={180}
+                    height={180}
                     className="block"
                   />
                 </div>
               </div>
               <p className="text-xs text-slate-500 text-center mb-4">
-                or{" "}
-                <a
-                  href="https://www.paypal.com/ncp/payment/4ZCXGAS75CST6"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors"
-                >
-                  click here to pay via PayPal
-                </a>
+                Scan to support the Ariladia REFORCEMENT Scoring Initiative
               </p>
             </div>
 
