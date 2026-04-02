@@ -1,15 +1,119 @@
 "use client"
 
-import { useActionState, useState } from "react"
-import { submitEntry, type SubmitEntryState } from "@/app/actions/submit-entry"
+import { useState, useRef } from "react"
+import { PayPalButtons, usePayPalScriptReducer } from "@paypal/react-paypal-js"
 
-const initialState: SubmitEntryState = { success: false }
+const FORMSPREE_ENDPOINT = "https://formspree.io/f/mvzvbvqr"
+
+interface FormData {
+  name: string
+  email: string
+  projectTitle: string
+  category: string
+  footage: string
+  vibe: string
+}
 
 export function SubmitForm() {
-  const [state, formAction, isPending] = useActionState(submitEntry, initialState)
+  const [formData, setFormData] = useState<FormData>({
+    name: "",
+    email: "",
+    projectTitle: "",
+    category: "",
+    footage: "",
+    vibe: "",
+  })
+  const [paymentCompleted, setPaymentCompleted] = useState(false)
   const [transactionId, setTransactionId] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
 
-  const isValidTransactionId = transactionId.trim().length > 0
+  const [{ isPending: isPayPalPending }] = usePayPalScriptReducer()
+
+  const categoryLabels: Record<string, string> = {
+    film: "Short Film",
+    game: "Video Game",
+    doc: "Documentary",
+    show: "Show Pilot / Series",
+  }
+
+  const isFormValid =
+    formData.name.trim() !== "" &&
+    formData.email.trim() !== "" &&
+    formData.projectTitle.trim() !== "" &&
+    formData.category !== "" &&
+    formData.footage.trim() !== ""
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+    setError("")
+  }
+
+  const createOrder = async () => {
+    const response = await fetch("/api/paypal/create-order", {
+      method: "POST",
+    })
+    const data = await response.json()
+    if (data.error) {
+      throw new Error(data.error)
+    }
+    return data.orderId
+  }
+
+  const onApprove = async (data: { orderID: string }) => {
+    const response = await fetch("/api/paypal/capture-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId: data.orderID }),
+    })
+    const captureData = await response.json()
+
+    if (captureData.success) {
+      setTransactionId(captureData.transactionId)
+      setPaymentCompleted(true)
+      await submitToFormspree(captureData.transactionId)
+    } else {
+      setError("Payment verification failed. Please try again.")
+    }
+  }
+
+  const submitToFormspree = async (txnId: string) => {
+    setIsSubmitting(true)
+    try {
+      const response = await fetch(FORMSPREE_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          projectTitle: formData.projectTitle,
+          category: categoryLabels[formData.category] || formData.category,
+          footageLink: formData.footage,
+          description: formData.vibe || "Not provided",
+          paypalTransactionId: txnId,
+          submittedAt: new Date().toISOString(),
+        }),
+      })
+
+      if (!response.ok) {
+        setError("Submission failed. Please contact support with your transaction ID: " + txnId)
+      } else {
+        setSuccess(true)
+      }
+    } catch {
+      setError("Submission failed. Please contact support with your transaction ID: " + txnId)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <section
@@ -45,7 +149,7 @@ export function SubmitForm() {
           <p className="text-xs text-slate-400 mt-1">Drawing Date: May 3, 2026</p>
         </div>
 
-        {state.success ? (
+        {success ? (
           <div className="text-center py-8">
             <p
               className="text-4xl font-black uppercase tracking-[-0.02em] text-white mb-3"
@@ -56,6 +160,11 @@ export function SubmitForm() {
             <p className="text-gray-400 text-sm leading-relaxed mb-6">
               Your submission has been received. Drawing takes place May 3, 2026 — we&apos;ll be in touch.
             </p>
+            {transactionId && (
+              <p className="text-xs text-slate-500 mb-4">
+                Transaction ID: <span className="text-cyan-400">{transactionId}</span>
+              </p>
+            )}
             <div className="bg-gradient-to-r from-cyan-400/10 to-cyan-400/5 border border-cyan-400/30 rounded-lg p-4">
               <p className="text-xs text-cyan-300 uppercase tracking-widest font-semibold mb-2">What&apos;s Next</p>
               <p className="text-sm text-slate-300">
@@ -64,9 +173,9 @@ export function SubmitForm() {
             </div>
           </div>
         ) : (
-          <form action={formAction} className="space-y-5">
-            {state.error && (
-              <p className="text-red-400 text-sm text-center bg-red-400/10 py-2 rounded-lg">{state.error}</p>
+          <form ref={formRef} className="space-y-5">
+            {error && (
+              <p className="text-red-400 text-sm text-center bg-red-400/10 py-2 rounded-lg">{error}</p>
             )}
 
             <div>
@@ -78,6 +187,8 @@ export function SubmitForm() {
                 name="name"
                 type="text"
                 required
+                value={formData.name}
+                onChange={handleInputChange}
                 placeholder="FULL NAME / STUDIO"
                 className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors"
               />
@@ -92,6 +203,8 @@ export function SubmitForm() {
                 name="email"
                 type="email"
                 required
+                value={formData.email}
+                onChange={handleInputChange}
                 placeholder="EMAIL"
                 className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors"
               />
@@ -106,6 +219,8 @@ export function SubmitForm() {
                 name="projectTitle"
                 type="text"
                 required
+                value={formData.projectTitle}
+                onChange={handleInputChange}
                 placeholder="PROJECT TITLE"
                 className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors"
               />
@@ -119,7 +234,8 @@ export function SubmitForm() {
                 id="category"
                 name="category"
                 required
-                defaultValue=""
+                value={formData.category}
+                onChange={handleInputChange}
                 className="w-full bg-black/60 border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-500 font-semibold tracking-widest transition-colors appearance-none cursor-pointer"
               >
                 <option value="" disabled>
@@ -149,6 +265,8 @@ export function SubmitForm() {
                 name="footage"
                 type="url"
                 required
+                value={formData.footage}
+                onChange={handleInputChange}
                 placeholder="LINK TO FOOTAGE (VIMEO / DRIVE)"
                 className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors"
               />
@@ -162,6 +280,8 @@ export function SubmitForm() {
                 id="vibe"
                 name="vibe"
                 rows={3}
+                value={formData.vibe}
+                onChange={handleInputChange}
                 placeholder="DESCRIBE THE VIBE / STORY"
                 className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest resize-none transition-colors"
               />
@@ -170,77 +290,50 @@ export function SubmitForm() {
             {/* PayPal Payment Section */}
             <div className="border-t border-white/5 pt-6 mt-6">
               <p className="text-[11px] text-slate-400 text-center mb-4 uppercase tracking-[0.35em] font-semibold">
-                Pay $5 via PayPal, then submit
+                Pay $5 via PayPal to submit
               </p>
-              <div className="flex justify-center items-center gap-8 mb-4 flex-wrap">
-                <div className="bg-white p-3 rounded-xl shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-                  <img
-                    src="/images/paypal-qr.png"
-                    alt="Ariladia REFORCEMENT Scoring Initiative - PayPal QR Code"
-                    width={180}
-                    height={180}
-                    className="block"
+
+              {!isFormValid && (
+                <p className="text-xs text-amber-400 text-center mb-4 bg-amber-400/10 py-2 rounded-lg">
+                  Please fill in all required fields above to enable payment
+                </p>
+              )}
+
+              {isPayPalPending ? (
+                <div className="flex justify-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+                </div>
+              ) : (
+                <div className={`${!isFormValid ? "opacity-50 pointer-events-none" : ""}`}>
+                  <PayPalButtons
+                    style={{
+                      layout: "vertical",
+                      color: "gold",
+                      shape: "rect",
+                      label: "pay",
+                      height: 45,
+                    }}
+                    disabled={!isFormValid || isSubmitting || paymentCompleted}
+                    createOrder={createOrder}
+                    onApprove={onApprove}
+                    onError={(err) => {
+                      console.error("[v0] PayPal error:", err)
+                      setError("Payment failed. Please try again.")
+                    }}
                   />
                 </div>
-                <div className="flex flex-col items-center gap-2">
-                  <a
-                    href="https://www.paypal.com/ncp/payment/4ZCXGAS75CST6"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-yellow-400 text-black font-bold px-8 py-2.5 rounded hover:bg-yellow-300 transition-colors text-sm"
-                  >
-                    Buy Now
-                  </a>
-                  <img src="https://www.paypalobjects.com/images/Debit_Credit_APM.svg" alt="Accepted payment methods" className="h-6" />
-                  <div className="text-[0.625rem] text-slate-500">
-                    Powered by{' '}
-                    <img
-                      src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg"
-                      alt="PayPal"
-                      className="h-3 inline align-middle"
-                    />
-                  </div>
-                </div>
-              </div>
-              <p className="text-xs text-slate-500 text-center mb-4">
-                Scan to support the Ariladia REFORCEMENT Scoring Initiative
-              </p>
+              )}
 
-              {/* Transaction ID input */}
-              <div className="mt-6">
-                <label htmlFor="transactionId" className="sr-only">
-                  PayPal Transaction ID
-                </label>
-                <input
-                  id="transactionId"
-                  name="transactionId"
-                  type="text"
-                  value={transactionId}
-                  onChange={(e) => setTransactionId(e.target.value)}
-                  placeholder="ENTER PAYPAL TRANSACTION ID"
-                  className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors"
-                />
-                {transactionId && (
-                  <p className="text-xs text-cyan-400 mt-2 flex items-center gap-2">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Transaction ID confirmed
-                  </p>
-                )}
-              </div>
-
-              {/* Hidden field to pass transaction ID to server action */}
-              <input type="hidden" name="transactionId" value={transactionId} />
+              {isSubmitting && (
+                <p className="text-cyan-400 text-sm text-center mt-4 flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Submitting your entry...
+                </p>
+              )}
             </div>
-
-            <button
-              type="submit"
-              disabled={isPending || !isValidTransactionId}
-              className="w-full bg-cyan-400 text-[#050505] font-black py-5 rounded-full hover:bg-white transition-all duration-300 uppercase tracking-[0.2em] text-sm disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_40px_rgba(0,200,255,0.3)] hover:shadow-[0_0_60px_rgba(0,200,255,0.5)]"
-            >
-              {isPending ? "Submitting..." : !isValidTransactionId ? "Enter Transaction ID to Submit" : "Submit Entry"}
-            </button>
           </form>
         )}
       </div>
