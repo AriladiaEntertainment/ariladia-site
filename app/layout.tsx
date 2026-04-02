@@ -39,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${barlowCondensed.variable} font-sans antialiased`}>
         {/* Fixed full-page comic panel background */}
         <div className="fixed inset-0 -z-10 flex flex-col">
