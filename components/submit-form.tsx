@@ -1,0 +1,196 @@
+"use client"
+
+import { useActionState } from "react"
+import { submitEntry, type SubmitEntryState } from "@/app/actions/submit-entry"
+
+const initialState: SubmitEntryState = { success: false }
+
+export function SubmitForm() {
+  const [state, formAction, isPending] = useActionState(submitEntry, initialState)
+
+  return (
+    <section
+      id="submit"
+      className="py-24 px-6 relative"
+      aria-labelledby="submit-heading"
+    >
+      {/* Ambient glow */}
+      <div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none"
+        style={{
+          background: "radial-gradient(ellipse at center, rgba(0, 200, 255, 0.05) 0%, transparent 60%)",
+        }}
+      />
+
+      {/* Glass Panel Form */}
+      <div className="max-w-xl mx-auto bg-black/50 backdrop-blur-2xl rounded-3xl border border-cyan-400/15 p-10 relative z-10 shadow-[0_0_80px_rgba(0,200,255,0.08),inset_0_1px_0_rgba(255,255,255,0.05)]">
+        <p className="text-[11px] font-bold tracking-[0.55em] uppercase text-cyan-400 mb-2 text-center">
+          $5 Entry
+        </p>
+        <h2
+          id="submit-heading"
+          className="text-3xl font-black mb-8 text-center uppercase tracking-[0.12em] text-white"
+          style={{ textShadow: "0 0 30px rgba(0,200,255,0.2)" }}
+        >
+          Submit Your Project
+        </h2>
+
+        {state.success ? (
+          <div className="text-center py-8">
+            <p
+              className="text-4xl font-black uppercase tracking-[-0.02em] text-white mb-3"
+              style={{ textShadow: "0 0 30px rgba(0, 200, 255, 0.5)" }}
+            >
+              You&apos;re In.
+            </p>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              Your submission has been received. Drawing takes place April 30,
+              2026 — we&apos;ll be in touch.
+            </p>
+          </div>
+        ) : (
+          <form action={formAction} className="space-y-5">
+            {state.error && (
+              <p className="text-red-400 text-sm text-center bg-red-400/10 py-2 rounded-lg">{state.error}</p>
+            )}
+
+            <div>
+              <label htmlFor="name" className="sr-only">
+                Full Name or Studio
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                required
+                placeholder="FULL NAME / STUDIO"
+                className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="email" className="sr-only">
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                placeholder="EMAIL"
+                className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="projectTitle" className="sr-only">
+                Project Title
+              </label>
+              <input
+                id="projectTitle"
+                name="projectTitle"
+                type="text"
+                required
+                placeholder="PROJECT TITLE"
+                className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="category" className="sr-only">
+                Project Category
+              </label>
+              <select
+                id="category"
+                name="category"
+                required
+                defaultValue=""
+                className="w-full bg-black/60 border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-500 font-semibold tracking-widest transition-colors appearance-none cursor-pointer"
+              >
+                <option value="" disabled>
+                  PROJECT CATEGORY
+                </option>
+                <option value="film" className="text-white bg-[#0a0a0a]">
+                  SHORT FILM
+                </option>
+                <option value="game" className="text-white bg-[#0a0a0a]">
+                  VIDEO GAME
+                </option>
+                <option value="doc" className="text-white bg-[#0a0a0a]">
+                  DOCUMENTARY
+                </option>
+                <option value="show" className="text-white bg-[#0a0a0a]">
+                  SHOW PILOT / SERIES
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="footage" className="sr-only">
+                Link to footage
+              </label>
+              <input
+                id="footage"
+                name="footage"
+                type="url"
+                required
+                placeholder="LINK TO FOOTAGE (VIMEO / DRIVE)"
+                className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="vibe" className="sr-only">
+                Describe the vibe / story
+              </label>
+              <textarea
+                id="vibe"
+                name="vibe"
+                rows={3}
+                placeholder="DESCRIBE THE VIBE / STORY"
+                className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest resize-none transition-colors"
+              />
+            </div>
+
+            {/* PayPal Payment Section */}
+            <div className="border-t border-white/5 pt-6 mt-6">
+              <p className="text-[11px] text-slate-400 text-center mb-4 uppercase tracking-[0.35em] font-semibold">
+                Pay $5 via PayPal, then submit
+              </p>
+              <div className="flex justify-center mb-4">
+                <div className="bg-white p-3 rounded-xl shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+                  <img
+                    src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://www.paypal.com/ncp/payment/4ZCXGAS75CST6"
+                    alt="PayPal QR Code - $5"
+                    width={120}
+                    height={120}
+                    className="block"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 text-center mb-4">
+                or{" "}
+                <a
+                  href="https://www.paypal.com/ncp/payment/4ZCXGAS75CST6"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors"
+                >
+                  click here to pay via PayPal
+                </a>
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isPending}
+              className="w-full bg-cyan-400 text-[#050505] font-black py-5 rounded-full hover:bg-white transition-all duration-300 uppercase tracking-[0.2em] text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_40px_rgba(0,200,255,0.3)] hover:shadow-[0_0_60px_rgba(0,200,255,0.5)]"
+            >
+              {isPending ? "Submitting..." : "Submit Entry"}
+            </button>
+          </form>
+        )}
+      </div>
+    </section>
+  )
+}
