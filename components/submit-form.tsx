@@ -32,11 +32,18 @@ export function SubmitForm() {
         </p>
         <h2
           id="submit-heading"
-          className="text-3xl font-black mb-8 text-center uppercase tracking-[0.12em] text-white"
+          className="text-3xl font-black mb-4 text-center uppercase tracking-[0.12em] text-white"
           style={{ textShadow: "0 0 30px rgba(0,200,255,0.2)" }}
         >
           Submit Your Project
         </h2>
+
+        {/* Deadline Banner */}
+        <div className="bg-gradient-to-r from-cyan-400/10 to-cyan-400/5 border border-cyan-400/30 rounded-lg p-4 mb-8 text-center">
+          <p className="text-xs text-cyan-300 uppercase tracking-widest font-semibold mb-1">Submission Deadline</p>
+          <p className="text-lg font-black text-cyan-400">April 30, 2026</p>
+          <p className="text-xs text-slate-400 mt-1">Drawing Date: May 3, 2026</p>
+        </div>
 
         {state.success ? (
           <div className="text-center py-8">
@@ -46,10 +53,15 @@ export function SubmitForm() {
             >
               You&apos;re In.
             </p>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Your submission has been received. Drawing takes place April 30,
-              2026 — we&apos;ll be in touch.
+            <p className="text-gray-400 text-sm leading-relaxed mb-6">
+              Your submission has been received. Drawing takes place May 3, 2026 — we&apos;ll be in touch.
             </p>
+            <div className="bg-gradient-to-r from-cyan-400/10 to-cyan-400/5 border border-cyan-400/30 rounded-lg p-4">
+              <p className="text-xs text-cyan-300 uppercase tracking-widest font-semibold mb-2">What&apos;s Next</p>
+              <p className="text-sm text-slate-300">
+                Winners will be announced on <span className="text-cyan-400 font-bold">May 3, 2026</span>
+              </p>
+            </div>
           </div>
         ) : (
           <form action={formAction} className="space-y-5">
