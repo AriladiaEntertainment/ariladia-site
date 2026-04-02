@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
+const FORMSPREE_ENDPOINT = "https://formspree.io/f/mvzvbvqr"
 
 export type SubmitEntryState = {
   success: boolean
@@ -23,23 +23,39 @@ export async function submitEntry(
     return { success: false, error: "Please fill in all required fields and provide your transaction ID." }
   }
 
-  const supabase = await createClient()
-
-  const { error } = await supabase.from("submissions").insert({
-    name,
-    email,
-    project_title: projectTitle,
-    project_type: projectType,
-    project_link: projectLink,
-    description: description || null,
-    payment_confirmed: true,
-    paypal_transaction_id: transactionId,
-  })
-
-  if (error) {
-    console.error("[v0] Supabase insert error:", error)
-    return { success: false, error: "Submission failed. Please try again." }
+  const categoryLabels: Record<string, string> = {
+    film: "Short Film",
+    game: "Video Game",
+    doc: "Documentary",
+    show: "Show Pilot / Series",
   }
 
-  return { success: true }
+  try {
+    const response = await fetch(FORMSPREE_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        name,
+        email,
+        projectTitle,
+        category: categoryLabels[projectType] || projectType,
+        footageLink: projectLink,
+        description: description || "Not provided",
+        paypalTransactionId: transactionId,
+        submittedAt: new Date().toISOString(),
+      }),
+    })
+
+    if (!response.ok) {
+      return { success: false, error: "Submission failed. Please try again." }
+    }
+
+    return { success: true }
+  } catch (err) {
+    console.error("[v0] Formspree error:", err)
+    return { success: false, error: "Submission failed. Please try again." }
+  }
 }
