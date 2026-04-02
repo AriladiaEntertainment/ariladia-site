@@ -1,8 +1,6 @@
 "use server"
 
-import { Resend } from "resend"
-
-const resend = new Resend(process.env.RESEND_API_KEY)
+const FORMSPREE_ENDPOINT = "https://formspree.io/f/mvzvbvqr"
 
 export type SubmitEntryState = {
   success: boolean
@@ -32,41 +30,32 @@ export async function submitEntry(
     show: "Show Pilot / Series",
   }
 
-  const emailContent = `
-New REFORCEMENT Submission
-
-Submitter Details:
-- Name: ${name}
-- Email: ${email}
-
-Project Details:
-- Title: ${projectTitle}
-- Category: ${categoryLabels[projectType] || projectType}
-- Footage Link: ${projectLink}
-- Description: ${description || "Not provided"}
-
-Payment:
-- PayPal Transaction ID: ${transactionId}
-
-Submitted on: ${new Date().toLocaleString("en-US", { timeZone: "America/New_York" })}
-  `.trim()
-
   try {
-    const { error } = await resend.emails.send({
-      from: "REFORCEMENT <onboarding@resend.dev>",
-      to: "Ariladia.entertainment@gmail.com",
-      subject: `New Submission: ${projectTitle} by ${name}`,
-      text: emailContent,
+    const response = await fetch(FORMSPREE_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        name,
+        email,
+        projectTitle,
+        category: categoryLabels[projectType] || projectType,
+        footageLink: projectLink,
+        description: description || "Not provided",
+        paypalTransactionId: transactionId,
+        submittedAt: new Date().toISOString(),
+      }),
     })
 
-    if (error) {
-      console.error("[v0] Email send error:", error)
+    if (!response.ok) {
       return { success: false, error: "Submission failed. Please try again." }
     }
 
     return { success: true }
   } catch (err) {
-    console.error("[v0] Email error:", err)
+    console.error("[v0] Formspree error:", err)
     return { success: false, error: "Submission failed. Please try again." }
   }
 }
