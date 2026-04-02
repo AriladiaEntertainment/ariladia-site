@@ -1,9 +1,6 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { Resend } from "resend"
-
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export type SubmitEntryState = {
   success: boolean
@@ -40,28 +37,6 @@ export async function submitEntry(
   if (error) {
     console.error("[v0] Supabase insert error:", error)
     return { success: false, error: "Submission failed. Please try again." }
-  }
-
-  // Send email notification
-  try {
-    await resend.emails.send({
-      from: "REFORCEMENT <onboarding@resend.dev>",
-      to: "ariladia.entertainment@gmail.com",
-      subject: `New Submission: ${projectTitle}`,
-      html: `
-        <h2>New Lottery Submission</h2>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Project Title:</strong> ${projectTitle}</p>
-        <p><strong>Project Type:</strong> ${projectType}</p>
-        <p><strong>Project Link:</strong> <a href="${projectLink}">${projectLink}</a></p>
-        <p><strong>Description:</strong> ${description || "N/A"}</p>
-        <p><em>Payment Confirmed: No</em></p>
-      `,
-    })
-  } catch (emailError) {
-    console.error("[v0] Email send error:", emailError)
-    // Don't fail the submission if email fails
   }
 
   return { success: true }
