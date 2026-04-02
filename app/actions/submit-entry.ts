@@ -1,6 +1,8 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
+import { Resend } from "resend"
+
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 export type SubmitEntryState = {
   success: boolean
@@ -23,23 +25,48 @@ export async function submitEntry(
     return { success: false, error: "Please fill in all required fields and provide your transaction ID." }
   }
 
-  const supabase = await createClient()
-
-  const { error } = await supabase.from("submissions").insert({
-    name,
-    email,
-    project_title: projectTitle,
-    project_type: projectType,
-    project_link: projectLink,
-    description: description || null,
-    payment_confirmed: true,
-    paypal_transaction_id: transactionId,
-  })
-
-  if (error) {
-    console.error("[v0] Supabase insert error:", error)
-    return { success: false, error: "Submission failed. Please try again." }
+  const categoryLabels: Record<string, string> = {
+    film: "Short Film",
+    game: "Video Game",
+    doc: "Documentary",
+    show: "Show Pilot / Series",
   }
 
-  return { success: true }
+  const emailContent = `
+New REFORCEMENT Submission
+
+Submitter Details:
+- Name: ${name}
+- Email: ${email}
+
+Project Details:
+- Title: ${projectTitle}
+- Category: ${categoryLabels[projectType] || projectType}
+- Footage Link: ${projectLink}
+- Description: ${description || "Not provided"}
+
+Payment:
+- PayPal Transaction ID: ${transactionId}
+
+Submitted on: ${new Date().toLocaleString("en-US", { timeZone: "America/New_York" })}
+  `.trim()
+
+  try {
+    const { error } = await resend.emails.send({
+      from: "REFORCEMENT <onboarding@resend.dev>",
+      to: "Ariladia.entertainment@gmail.com",
+      subject: `New Submission: ${projectTitle} by ${name}`,
+      text: emailContent,
+    })
+
+    if (error) {
+      console.error("[v0] Email send error:", error)
+      return { success: false, error: "Submission failed. Please try again." }
+    }
+
+    return { success: true }
+  } catch (err) {
+    console.error("[v0] Email error:", err)
+    return { success: false, error: "Submission failed. Please try again." }
+  }
 }
