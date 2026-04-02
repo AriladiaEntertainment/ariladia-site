@@ -160,7 +160,7 @@ export function SubmitForm() {
               <p className="text-[11px] text-slate-400 text-center mb-4 uppercase tracking-[0.35em] font-semibold">
                 Pay $5 via PayPal, then submit
               </p>
-              <div className="flex justify-center mb-4">
+              <div className="flex justify-center items-center gap-8 mb-4 flex-wrap">
                 <div className="bg-white p-3 rounded-xl shadow-[0_0_30px_rgba(255,255,255,0.1)]">
                   <img
                     src="/images/paypal-qr.png"
@@ -169,6 +169,25 @@ export function SubmitForm() {
                     height={180}
                     className="block"
                   />
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <a
+                    href="https://www.paypal.com/ncp/payment/4ZCXGAS75CST6"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-yellow-400 text-black font-bold px-8 py-2.5 rounded hover:bg-yellow-300 transition-colors text-sm"
+                  >
+                    Buy Now
+                  </a>
+                  <img src="https://www.paypalobjects.com/images/Debit_Credit_APM.svg" alt="Accepted payment methods" className="h-6" />
+                  <div className="text-[0.625rem] text-slate-500">
+                    Powered by{' '}
+                    <img
+                      src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg"
+                      alt="PayPal"
+                      className="h-3 inline align-middle"
+                    />
+                  </div>
                 </div>
               </div>
               <p className="text-xs text-slate-500 text-center mb-4">
