@@ -21,7 +21,7 @@ export function Nav() {
           href="https://www.ariladia.com"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[11px] text-slate-300 hover:text-cyan-400 font-semibold uppercase tracking-[0.2em] transition-colors hidden sm:block"
+          className="text-[11px] text-slate-300 hover:text-cyan-400 font-semibold uppercase tracking-[0.2em] transition-colors"
         >
           About Us
         </a>
