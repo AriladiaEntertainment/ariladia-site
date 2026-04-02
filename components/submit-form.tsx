@@ -1,12 +1,13 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useState } from "react"
 import { submitEntry, type SubmitEntryState } from "@/app/actions/submit-entry"
 
 const initialState: SubmitEntryState = { success: false }
 
 export function SubmitForm() {
   const [state, formAction, isPending] = useActionState(submitEntry, initialState)
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false)
 
   return (
     <section
@@ -171,14 +172,42 @@ export function SubmitForm() {
               <p className="text-xs text-slate-500 text-center mb-4">
                 Scan to support the Ariladia REFORCEMENT Scoring Initiative
               </p>
+
+              {/* Payment confirmation checkbox */}
+              <label className="flex items-start gap-3 cursor-pointer group mt-2">
+                <div className="relative flex-shrink-0 mt-0.5">
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={paymentConfirmed}
+                    onChange={(e) => setPaymentConfirmed(e.target.checked)}
+                  />
+                  <div
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-200 ${
+                      paymentConfirmed
+                        ? "bg-cyan-400 border-cyan-400"
+                        : "bg-transparent border-white/20 group-hover:border-cyan-400/50"
+                    }`}
+                  >
+                    {paymentConfirmed && (
+                      <svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <span className="text-xs text-slate-400 leading-relaxed font-semibold tracking-wide">
+                  I have completed my $5 PayPal payment
+                </span>
+              </label>
             </div>
 
             <button
               type="submit"
-              disabled={isPending}
-              className="w-full bg-cyan-400 text-[#050505] font-black py-5 rounded-full hover:bg-white transition-all duration-300 uppercase tracking-[0.2em] text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_40px_rgba(0,200,255,0.3)] hover:shadow-[0_0_60px_rgba(0,200,255,0.5)]"
+              disabled={isPending || !paymentConfirmed}
+              className="w-full bg-cyan-400 text-[#050505] font-black py-5 rounded-full hover:bg-white transition-all duration-300 uppercase tracking-[0.2em] text-sm disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_40px_rgba(0,200,255,0.3)] hover:shadow-[0_0_60px_rgba(0,200,255,0.5)]"
             >
-              {isPending ? "Submitting..." : "Submit Entry"}
+              {isPending ? "Submitting..." : !paymentConfirmed ? "Complete Payment to Submit" : "Submit Entry"}
             </button>
           </form>
         )}
