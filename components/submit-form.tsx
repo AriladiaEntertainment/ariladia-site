@@ -1,12 +1,15 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useState } from "react"
 import { submitEntry, type SubmitEntryState } from "@/app/actions/submit-entry"
 
 const initialState: SubmitEntryState = { success: false }
 
 export function SubmitForm() {
   const [state, formAction, isPending] = useActionState(submitEntry, initialState)
+  const [transactionId, setTransactionId] = useState("")
+
+  const isValidTransactionId = transactionId.trim().length > 0
 
   return (
     <section
@@ -29,11 +32,18 @@ export function SubmitForm() {
         </p>
         <h2
           id="submit-heading"
-          className="text-3xl font-black mb-8 text-center uppercase tracking-[0.12em] text-white"
+          className="text-3xl font-black mb-4 text-center uppercase tracking-[0.12em] text-white"
           style={{ textShadow: "0 0 30px rgba(0,200,255,0.2)" }}
         >
           Submit Your Project
         </h2>
+
+        {/* Deadline Banner */}
+        <div className="bg-gradient-to-r from-cyan-400/10 to-cyan-400/5 border border-cyan-400/30 rounded-lg p-4 mb-8 text-center">
+          <p className="text-xs text-cyan-300 uppercase tracking-widest font-semibold mb-1">Submission Deadline</p>
+          <p className="text-lg font-black text-cyan-400">April 30, 2026</p>
+          <p className="text-xs text-slate-400 mt-1">Drawing Date: May 3, 2026</p>
+        </div>
 
         {state.success ? (
           <div className="text-center py-8">
@@ -43,10 +53,15 @@ export function SubmitForm() {
             >
               You&apos;re In.
             </p>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Your submission has been received. Drawing takes place April 30,
-              2026 — we&apos;ll be in touch.
+            <p className="text-gray-400 text-sm leading-relaxed mb-6">
+              Your submission has been received. Drawing takes place May 3, 2026 — we&apos;ll be in touch.
             </p>
+            <div className="bg-gradient-to-r from-cyan-400/10 to-cyan-400/5 border border-cyan-400/30 rounded-lg p-4">
+              <p className="text-xs text-cyan-300 uppercase tracking-widest font-semibold mb-2">What&apos;s Next</p>
+              <p className="text-sm text-slate-300">
+                Winners will be announced on <span className="text-cyan-400 font-bold">May 3, 2026</span>
+              </p>
+            </div>
           </div>
         ) : (
           <form action={formAction} className="space-y-5">
@@ -157,36 +172,74 @@ export function SubmitForm() {
               <p className="text-[11px] text-slate-400 text-center mb-4 uppercase tracking-[0.35em] font-semibold">
                 Pay $5 via PayPal, then submit
               </p>
-              <div className="flex justify-center mb-4">
+              <div className="flex justify-center items-center gap-8 mb-4 flex-wrap">
                 <div className="bg-white p-3 rounded-xl shadow-[0_0_30px_rgba(255,255,255,0.1)]">
                   <img
-                    src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://www.paypal.com/ncp/payment/4ZCXGAS75CST6"
-                    alt="PayPal QR Code - $5"
-                    width={120}
-                    height={120}
+                    src="/images/paypal-qr.png"
+                    alt="Ariladia REFORCEMENT Scoring Initiative - PayPal QR Code"
+                    width={180}
+                    height={180}
                     className="block"
                   />
                 </div>
+                <div className="flex flex-col items-center gap-2">
+                  <a
+                    href="https://www.paypal.com/ncp/payment/4ZCXGAS75CST6"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-yellow-400 text-black font-bold px-8 py-2.5 rounded hover:bg-yellow-300 transition-colors text-sm"
+                  >
+                    Buy Now
+                  </a>
+                  <img src="https://www.paypalobjects.com/images/Debit_Credit_APM.svg" alt="Accepted payment methods" className="h-6" />
+                  <div className="text-[0.625rem] text-slate-500">
+                    Powered by{' '}
+                    <img
+                      src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg"
+                      alt="PayPal"
+                      className="h-3 inline align-middle"
+                    />
+                  </div>
+                </div>
               </div>
               <p className="text-xs text-slate-500 text-center mb-4">
-                or{" "}
-                <a
-                  href="https://www.paypal.com/ncp/payment/4ZCXGAS75CST6"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors"
-                >
-                  click here to pay via PayPal
-                </a>
+                Scan to support the Ariladia REFORCEMENT Scoring Initiative
               </p>
+
+              {/* Transaction ID input */}
+              <div className="mt-6">
+                <label htmlFor="transactionId" className="sr-only">
+                  PayPal Transaction ID
+                </label>
+                <input
+                  id="transactionId"
+                  name="transactionId"
+                  type="text"
+                  value={transactionId}
+                  onChange={(e) => setTransactionId(e.target.value)}
+                  placeholder="ENTER PAYPAL TRANSACTION ID"
+                  className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors"
+                />
+                {transactionId && (
+                  <p className="text-xs text-cyan-400 mt-2 flex items-center gap-2">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Transaction ID confirmed
+                  </p>
+                )}
+              </div>
+
+              {/* Hidden field to pass transaction ID to server action */}
+              <input type="hidden" name="transactionId" value={transactionId} />
             </div>
 
             <button
               type="submit"
-              disabled={isPending}
-              className="w-full bg-cyan-400 text-[#050505] font-black py-5 rounded-full hover:bg-white transition-all duration-300 uppercase tracking-[0.2em] text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_40px_rgba(0,200,255,0.3)] hover:shadow-[0_0_60px_rgba(0,200,255,0.5)]"
+              disabled={isPending || !isValidTransactionId}
+              className="w-full bg-cyan-400 text-[#050505] font-black py-5 rounded-full hover:bg-white transition-all duration-300 uppercase tracking-[0.2em] text-sm disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_40px_rgba(0,200,255,0.3)] hover:shadow-[0_0_60px_rgba(0,200,255,0.5)]"
             >
-              {isPending ? "Submitting..." : "Submit Entry"}
+              {isPending ? "Submitting..." : !isValidTransactionId ? "Enter Transaction ID to Submit" : "Submit Entry"}
             </button>
           </form>
         )}
