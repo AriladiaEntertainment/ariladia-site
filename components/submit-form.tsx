@@ -7,7 +7,9 @@ const initialState: SubmitEntryState = { success: false }
 
 export function SubmitForm() {
   const [state, formAction, isPending] = useActionState(submitEntry, initialState)
-  const [paymentConfirmed, setPaymentConfirmed] = useState(false)
+  const [transactionId, setTransactionId] = useState("")
+
+  const isValidTransactionId = transactionId.trim().length > 0
 
   return (
     <section
@@ -173,41 +175,40 @@ export function SubmitForm() {
                 Scan to support the Ariladia REFORCEMENT Scoring Initiative
               </p>
 
-              {/* Payment confirmation checkbox */}
-              <label className="flex items-start gap-3 cursor-pointer group mt-2">
-                <div className="relative flex-shrink-0 mt-0.5">
-                  <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={paymentConfirmed}
-                    onChange={(e) => setPaymentConfirmed(e.target.checked)}
-                  />
-                  <div
-                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-200 ${
-                      paymentConfirmed
-                        ? "bg-cyan-400 border-cyan-400"
-                        : "bg-transparent border-white/20 group-hover:border-cyan-400/50"
-                    }`}
-                  >
-                    {paymentConfirmed && (
-                      <svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
-                      </svg>
-                    )}
-                  </div>
-                </div>
-                <span className="text-xs text-slate-400 leading-relaxed font-semibold tracking-wide">
-                  I have completed my $5 PayPal payment
-                </span>
-              </label>
+              {/* Transaction ID input */}
+              <div className="mt-6">
+                <label htmlFor="transactionId" className="sr-only">
+                  PayPal Transaction ID
+                </label>
+                <input
+                  id="transactionId"
+                  name="transactionId"
+                  type="text"
+                  value={transactionId}
+                  onChange={(e) => setTransactionId(e.target.value)}
+                  placeholder="ENTER PAYPAL TRANSACTION ID"
+                  className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors"
+                />
+                {transactionId && (
+                  <p className="text-xs text-cyan-400 mt-2 flex items-center gap-2">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Transaction ID confirmed
+                  </p>
+                )}
+              </div>
+
+              {/* Hidden field to pass transaction ID to server action */}
+              <input type="hidden" name="transactionId" value={transactionId} />
             </div>
 
             <button
               type="submit"
-              disabled={isPending || !paymentConfirmed}
+              disabled={isPending || !isValidTransactionId}
               className="w-full bg-cyan-400 text-[#050505] font-black py-5 rounded-full hover:bg-white transition-all duration-300 uppercase tracking-[0.2em] text-sm disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_40px_rgba(0,200,255,0.3)] hover:shadow-[0_0_60px_rgba(0,200,255,0.5)]"
             >
-              {isPending ? "Submitting..." : !paymentConfirmed ? "Complete Payment to Submit" : "Submit Entry"}
+              {isPending ? "Submitting..." : !isValidTransactionId ? "Enter Transaction ID to Submit" : "Submit Entry"}
             </button>
           </form>
         )}

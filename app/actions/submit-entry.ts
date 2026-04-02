@@ -17,9 +17,10 @@ export async function submitEntry(
   const projectType = formData.get("category") as string
   const projectLink = formData.get("footage") as string
   const description = formData.get("vibe") as string
+  const transactionId = formData.get("transactionId") as string
 
-  if (!name || !email || !projectTitle || !projectType || !projectLink) {
-    return { success: false, error: "Please fill in all required fields." }
+  if (!name || !email || !projectTitle || !projectType || !projectLink || !transactionId) {
+    return { success: false, error: "Please fill in all required fields and provide your transaction ID." }
   }
 
   const supabase = await createClient()
@@ -31,7 +32,8 @@ export async function submitEntry(
     project_type: projectType,
     project_link: projectLink,
     description: description || null,
-    payment_confirmed: false,
+    payment_confirmed: true,
+    paypal_transaction_id: transactionId,
   })
 
   if (error) {
