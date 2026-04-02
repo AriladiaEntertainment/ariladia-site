@@ -3,7 +3,7 @@ export function OpportunitySection() {
     { label: "Format", value: "Short / Game / Doc / Show" },
     { label: "Project Length", value: "1–3 Minutes" },
     { label: "Selection Method", value: "Random Lottery" },
-    { label: "Drawing Date", value: "April 30, 2026" },
+    { label: "Drawing Date", value: "May 3, 2026" },
     { label: "Entry Fee", value: "$5 USD" },
     { label: "Winners Selected", value: "5 Projects" },
   ]
