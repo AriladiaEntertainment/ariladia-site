@@ -8,11 +8,7 @@ interface PayPalProviderProps {
 }
 
 export function PayPalProvider({ children }: PayPalProviderProps) {
-  const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
-
-  if (!clientId) {
-    return <>{children}</>
-  }
+  const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "sb"
 
   return (
     <PayPalScriptProvider
