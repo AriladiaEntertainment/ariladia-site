@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { PayPalButtons, usePayPalScriptReducer } from "@paypal/react-paypal-js"
 
 const FORMSPREE_ENDPOINT = "https://formspree.io/f/mvzvbvqr"
 
@@ -12,58 +11,6 @@ interface FormData {
   category: string
   footage: string
   vibe: string
-}
-
-function PayPalButtonWrapper({ 
-  isFormValid, 
-  isSubmitting, 
-  paymentCompleted, 
-  createOrder, 
-  onApprove, 
-  onError 
-}: { 
-  isFormValid: boolean
-  isSubmitting: boolean
-  paymentCompleted: boolean
-  createOrder: () => Promise<string>
-  onApprove: (data: { orderID: string }) => Promise<void>
-  onError: (err: unknown) => void
-}) {
-  const [{ isPending, isRejected }] = usePayPalScriptReducer()
-
-  if (isPending) {
-    return (
-      <div className="flex justify-center py-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
-      </div>
-    )
-  }
-
-  if (isRejected) {
-    return (
-      <div className="text-center py-4 bg-amber-400/10 rounded-lg">
-        <p className="text-amber-400 text-sm">Failed to load PayPal. Please refresh the page.</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className={`${!isFormValid ? "opacity-50 pointer-events-none" : ""}`}>
-      <PayPalButtons
-        style={{
-          layout: "vertical",
-          color: "gold",
-          shape: "rect",
-          label: "pay",
-          height: 45,
-        }}
-        disabled={!isFormValid || isSubmitting || paymentCompleted}
-        createOrder={createOrder}
-        onApprove={onApprove}
-        onError={onError}
-      />
-    </div>
-  )
 }
 
 export function SubmitForm() {
@@ -81,8 +28,6 @@ export function SubmitForm() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
-
-  const isPayPalConfigured = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID && process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID !== "sb"
 
   const categoryLabels: Record<string, string> = {
     film: "Short Film",
@@ -106,35 +51,7 @@ export function SubmitForm() {
     setError("")
   }
 
-  const createOrder = async () => {
-    const response = await fetch("/api/paypal/create-order", {
-      method: "POST",
-    })
-    const data = await response.json()
-    if (data.error) {
-      throw new Error(data.error)
-    }
-    return data.orderId
-  }
-
-  const onApprove = async (data: { orderID: string }) => {
-    const response = await fetch("/api/paypal/capture-order", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId: data.orderID }),
-    })
-    const captureData = await response.json()
-
-    if (captureData.success) {
-      setTransactionId(captureData.transactionId)
-      setPaymentCompleted(true)
-      await submitToFormspree(captureData.transactionId)
-    } else {
-      setError("Payment verification failed. Please try again.")
-    }
-  }
-
-  const submitToFormspree = async (txnId: string) => {
+  const submitToFormspree = async () => {
     setIsSubmitting(true)
     try {
       const response = await fetch(FORMSPREE_ENDPOINT, {
@@ -150,18 +67,18 @@ export function SubmitForm() {
           category: categoryLabels[formData.category] || formData.category,
           footageLink: formData.footage,
           description: formData.vibe || "Not provided",
-          paypalTransactionId: txnId,
           submittedAt: new Date().toISOString(),
         }),
       })
 
       if (!response.ok) {
-        setError("Submission failed. Please contact support with your transaction ID: " + txnId)
+        setError("Submission failed. Please try again.")
       } else {
         setSuccess(true)
+        setPaymentCompleted(true)
       }
     } catch {
-      setError("Submission failed. Please contact support with your transaction ID: " + txnId)
+      setError("Submission failed. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
@@ -351,33 +268,20 @@ export function SubmitForm() {
                 </p>
               )}
 
-              {!isPayPalConfigured ? (
-                <div className="text-center py-4 bg-amber-400/10 rounded-lg">
-                  <p className="text-amber-400 text-sm">PayPal is not configured. Please add your PayPal credentials.</p>
-                </div>
-              ) : (
-                <PayPalButtonWrapper
-                  isFormValid={isFormValid}
-                  isSubmitting={isSubmitting}
-                  paymentCompleted={paymentCompleted}
-                  createOrder={createOrder}
-                  onApprove={onApprove}
-                  onError={(err) => {
-                    console.error("[v0] PayPal error:", err)
-                    setError("Payment failed. Please try again.")
+              <div className="flex justify-center">
+                <div
+                  dangerouslySetInnerHTML={{
+                    __html: `<div>
+                      <style>.pp-4ZCXGAS75CST6{text-align:center;border:none;border-radius:0.25rem;min-width:11.625rem;padding:0 2rem;height:2.625rem;font-weight:bold;background-color:#FFD140;color:#000000;font-family:"Helvetica Neue",Arial,sans-serif;font-size:1rem;line-height:1.25rem;cursor:pointer;}</style>
+                      <form action="https://www.paypal.com/ncp/payment/4ZCXGAS75CST6" method="post" target="_blank" style="display:inline-grid;justify-items:center;align-content:start;gap:0.5rem;">
+                        <input class="pp-4ZCXGAS75CST6" type="submit" value="Buy Now" />
+                        <img src="https://www.paypalobjects.com/images/Debit_Credit_APM.svg" alt="cards" />
+                        <section style="font-size: 0.75rem;"> Powered by <img src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg" alt="paypal" style="height:0.875rem;vertical-align:middle;"/></section>
+                      </form>
+                    </div>`,
                   }}
                 />
-              )}
-
-              {isSubmitting && (
-                <p className="text-cyan-400 text-sm text-center mt-4 flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Submitting your entry...
-                </p>
-              )}
+              </div>
             </div>
           </form>
         )}
