@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server"
 
-const PAYPAL_API_BASE = process.env.NODE_ENV === "production" 
-  ? "https://api-m.paypal.com" 
-  : "https://api-m.sandbox.paypal.com"
+// Use sandbox for testing - change to "https://api-m.paypal.com" for production live payments
+const PAYPAL_API_BASE = "https://api-m.sandbox.paypal.com"
 
 async function getAccessToken() {
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
