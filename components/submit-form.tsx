@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
-import { PayPalButtons, usePayPalScriptReducer } from "@paypal/react-paypal-js"
+import { useState } from "react"
 
 const FORMSPREE_ENDPOINT = "https://formspree.io/f/mvzvbvqr"
 
@@ -14,59 +13,17 @@ interface FormData {
   vibe: string
 }
 
-function PayPalButtonWrapper({ 
-  isFormValid, 
-  isSubmitting, 
-  paymentCompleted, 
-  createOrder, 
-  onApprove, 
-  onError 
-}: { 
-  isFormValid: boolean
-  isSubmitting: boolean
-  paymentCompleted: boolean
-  createOrder: () => Promise<string>
-  onApprove: (data: { orderID: string }) => Promise<void>
-  onError: (err: unknown) => void
-}) {
-  const [{ isPending, isRejected }] = usePayPalScriptReducer()
+type Step = "form" | "pay" | "confirm" | "done"
 
-  if (isPending) {
-    return (
-      <div className="flex justify-center py-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
-      </div>
-    )
-  }
-
-  if (isRejected) {
-    return (
-      <div className="text-center py-4 bg-amber-400/10 rounded-lg">
-        <p className="text-amber-400 text-sm">Failed to load PayPal. Please refresh the page.</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className={`${!isFormValid ? "opacity-50 pointer-events-none" : ""}`}>
-      <PayPalButtons
-        style={{
-          layout: "vertical",
-          color: "gold",
-          shape: "rect",
-          label: "pay",
-          height: 45,
-        }}
-        disabled={!isFormValid || isSubmitting || paymentCompleted}
-        createOrder={createOrder}
-        onApprove={onApprove}
-        onError={onError}
-      />
-    </div>
-  )
+const categoryLabels: Record<string, string> = {
+  film: "Short Film",
+  game: "Video Game",
+  doc: "Documentary",
+  show: "Show Pilot / Series",
 }
 
 export function SubmitForm() {
+  const [step, setStep] = useState<Step>("form")
   const [formData, setFormData] = useState<FormData>({
     name: "",
     email: "",
@@ -75,21 +32,12 @@ export function SubmitForm() {
     footage: "",
     vibe: "",
   })
-  const [paymentCompleted, setPaymentCompleted] = useState(false)
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false)
+  const [paymentInitiated, setPaymentInitiated] = useState(false)
   const [transactionId, setTransactionId] = useState("")
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
-  const [success, setSuccess] = useState(false)
-  const formRef = useRef<HTMLFormElement>(null)
-
-  const isPayPalConfigured = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID && process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID !== "sb"
-
-  const categoryLabels: Record<string, string> = {
-    film: "Short Film",
-    game: "Video Game",
-    doc: "Documentary",
-    show: "Show Pilot / Series",
-  }
 
   const isFormValid =
     formData.name.trim() !== "" &&
@@ -106,43 +54,53 @@ export function SubmitForm() {
     setError("")
   }
 
-  const createOrder = async () => {
-    const response = await fetch("/api/paypal/create-order", {
-      method: "POST",
-    })
-    const data = await response.json()
-    if (data.error) {
-      throw new Error(data.error)
+  const handleContinueToPayment = () => {
+    if (!isFormValid) {
+      setError("Please fill in all required fields.")
+      return
     }
-    return data.orderId
+    setStep("pay")
   }
 
-  const onApprove = async (data: { orderID: string }) => {
-    const response = await fetch("/api/paypal/capture-order", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId: data.orderID }),
-    })
-    const captureData = await response.json()
-
-    if (captureData.success) {
-      setTransactionId(captureData.transactionId)
-      setPaymentCompleted(true)
-      await submitToFormspree(captureData.transactionId)
-    } else {
-      setError("Payment verification failed. Please try again.")
+  const handleIHavePaid = async () => {
+    if (!transactionId.trim()) {
+      setError("Please enter your PayPal Transaction ID")
+      return
+    }
+    setIsVerifyingPayment(true)
+    setError("")
+    try {
+      const response = await fetch("/api/verify-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transactionId }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        setPaymentConfirmed(true)
+        setStep("confirm")
+      } else {
+        setError(data.error || "Payment verification failed.")
+      }
+    } catch (err) {
+      console.error("[v0] Verification error:", err)
+      setError("Failed to verify payment. Please try again.")
+    } finally {
+      setIsVerifyingPayment(false)
     }
   }
 
-  const submitToFormspree = async (txnId: string) => {
+  const handleSubmit = async () => {
+    if (!paymentConfirmed) {
+      setError("Please confirm you have completed payment.")
+      return
+    }
     setIsSubmitting(true)
+    setError("")
     try {
       const response = await fetch(FORMSPREE_ENDPOINT, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
@@ -150,34 +108,27 @@ export function SubmitForm() {
           category: categoryLabels[formData.category] || formData.category,
           footageLink: formData.footage,
           description: formData.vibe || "Not provided",
-          paypalTransactionId: txnId,
+          paymentConfirmed: true,
           submittedAt: new Date().toISOString(),
         }),
       })
-
       if (!response.ok) {
-        setError("Submission failed. Please contact support with your transaction ID: " + txnId)
+        setError("Submission failed. Please try again.")
       } else {
-        setSuccess(true)
+        setStep("done")
       }
     } catch {
-      setError("Submission failed. Please contact support with your transaction ID: " + txnId)
+      setError("Submission failed. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <section
-      id="submit"
-      className="py-24 px-6 relative"
-      aria-labelledby="submit-heading"
-    >
+    <section id="submit" className="py-24 px-6 relative" aria-labelledby="submit-heading">
       <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none"
-        style={{
-          background: "radial-gradient(ellipse at center, rgba(0, 200, 255, 0.05) 0%, transparent 60%)",
-        }}
+        style={{ background: "radial-gradient(ellipse at center, rgba(0, 200, 255, 0.05) 0%, transparent 60%)" }}
       />
 
       <div className="max-w-xl mx-auto bg-black/50 backdrop-blur-2xl rounded-3xl border border-cyan-400/15 p-10 relative z-10 shadow-[0_0_80px_rgba(0,200,255,0.08),inset_0_1px_0_rgba(255,255,255,0.05)]">
@@ -198,87 +149,34 @@ export function SubmitForm() {
           <p className="text-xs text-slate-400 mt-1">Drawing Date: May 3, 2026</p>
         </div>
 
-        {success ? (
-          <div className="text-center py-8">
-            <p
-              className="text-4xl font-black uppercase tracking-[-0.02em] text-white mb-3"
-              style={{ textShadow: "0 0 30px rgba(0, 200, 255, 0.5)" }}
-            >
-              You&apos;re In.
-            </p>
-            <p className="text-gray-400 text-sm leading-relaxed mb-6">
-              Your submission has been received. Drawing takes place May 3, 2026 — we&apos;ll be in touch.
-            </p>
-            {transactionId && (
-              <p className="text-xs text-slate-500 mb-4">
-                Transaction ID: <span className="text-cyan-400">{transactionId}</span>
-              </p>
-            )}
-            <div className="bg-gradient-to-r from-cyan-400/10 to-cyan-400/5 border border-cyan-400/30 rounded-lg p-4">
-              <p className="text-xs text-cyan-300 uppercase tracking-widest font-semibold mb-2">What&apos;s Next</p>
-              <p className="text-sm text-slate-300">
-                Winners will be announced on <span className="text-cyan-400 font-bold">May 3, 2026</span>
-              </p>
-            </div>
+        {step !== "done" && (
+          <div className="flex items-center justify-center gap-2 mb-8">
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${step === "form" ? "bg-cyan-400 text-black" : "bg-cyan-400/30 text-cyan-400"}`}>1</div>
+            <div className="w-8 h-px bg-white/10" />
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${step === "pay" ? "bg-cyan-400 text-black" : step === "confirm" ? "bg-cyan-400/30 text-cyan-400" : "bg-white/10 text-slate-500"}`}>2</div>
+            <div className="w-8 h-px bg-white/10" />
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${step === "confirm" ? "bg-cyan-400 text-black" : "bg-white/10 text-slate-500"}`}>3</div>
           </div>
-        ) : (
-          <form ref={formRef} className="space-y-5">
-            {error && (
-              <p className="text-red-400 text-sm text-center bg-red-400/10 py-2 rounded-lg">{error}</p>
-            )}
+        )}
 
+        {step === "form" && (
+          <div className="space-y-5">
+            {error && <p className="text-red-400 text-sm text-center bg-red-400/10 py-2 rounded-lg">{error}</p>}
             <div>
               <label htmlFor="name" className="sr-only">Full Name or Studio</label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                required
-                value={formData.name}
-                onChange={handleInputChange}
-                placeholder="FULL NAME / STUDIO"
-                className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors"
-              />
+              <input id="name" name="name" type="text" required value={formData.name} onChange={handleInputChange} placeholder="FULL NAME / STUDIO" className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors" />
             </div>
-
             <div>
               <label htmlFor="email" className="sr-only">Email</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="EMAIL"
-                className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors"
-              />
+              <input id="email" name="email" type="email" required value={formData.email} onChange={handleInputChange} placeholder="EMAIL" className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors" />
             </div>
-
             <div>
               <label htmlFor="projectTitle" className="sr-only">Project Title</label>
-              <input
-                id="projectTitle"
-                name="projectTitle"
-                type="text"
-                required
-                value={formData.projectTitle}
-                onChange={handleInputChange}
-                placeholder="PROJECT TITLE"
-                className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors"
-              />
+              <input id="projectTitle" name="projectTitle" type="text" required value={formData.projectTitle} onChange={handleInputChange} placeholder="PROJECT TITLE" className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors" />
             </div>
-
             <div>
               <label htmlFor="category" className="sr-only">Project Category</label>
-              <select
-                id="category"
-                name="category"
-                required
-                value={formData.category}
-                onChange={handleInputChange}
-                className="w-full bg-black/60 border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-500 font-semibold tracking-widest transition-colors appearance-none cursor-pointer"
-              >
+              <select id="category" name="category" required value={formData.category} onChange={handleInputChange} className="w-full bg-black/60 border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm font-semibold tracking-widest transition-colors appearance-none cursor-pointer" style={{ color: formData.category ? "#e2e8f0" : "#64748b" }}>
                 <option value="" disabled>PROJECT CATEGORY</option>
                 <option value="film" className="text-white bg-[#0a0a0a]">SHORT FILM</option>
                 <option value="game" className="text-white bg-[#0a0a0a]">VIDEO GAME</option>
@@ -286,74 +184,114 @@ export function SubmitForm() {
                 <option value="show" className="text-white bg-[#0a0a0a]">SHOW PILOT / SERIES</option>
               </select>
             </div>
-
             <div>
               <label htmlFor="footage" className="sr-only">Link to footage</label>
-              <input
-                id="footage"
-                name="footage"
-                type="url"
-                required
-                value={formData.footage}
-                onChange={handleInputChange}
-                placeholder="LINK TO FOOTAGE (VIMEO / DRIVE)"
-                className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors"
-              />
+              <input id="footage" name="footage" type="url" required value={formData.footage} onChange={handleInputChange} placeholder="LINK TO FOOTAGE (VIMEO / DRIVE)" className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest transition-colors" />
             </div>
-
             <div>
               <label htmlFor="vibe" className="sr-only">Describe the vibe / story</label>
-              <textarea
-                id="vibe"
-                name="vibe"
-                rows={3}
-                value={formData.vibe}
-                onChange={handleInputChange}
-                placeholder="DESCRIBE THE VIBE / STORY"
-                className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest resize-none transition-colors"
-              />
+              <textarea id="vibe" name="vibe" rows={3} value={formData.vibe} onChange={handleInputChange} placeholder="DESCRIBE THE VIBE / STORY" className="w-full bg-transparent border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-semibold tracking-widest resize-none transition-colors" />
             </div>
+            <div className="pt-4">
+              <button type="button" onClick={handleContinueToPayment} disabled={!isFormValid} className="w-full py-3 bg-cyan-400 hover:bg-cyan-300 disabled:bg-white/10 disabled:text-slate-500 disabled:cursor-not-allowed text-black font-black uppercase tracking-[0.2em] text-sm rounded-lg transition-colors">
+                Continue to Payment
+              </button>
+            </div>
+          </div>
+        )}
 
-            <div className="border-t border-white/5 pt-6 mt-6">
-              <p className="text-[11px] text-slate-400 text-center mb-4 uppercase tracking-[0.35em] font-semibold">
-                Pay $5 via PayPal to submit
+        {step === "pay" && (
+          <div className="space-y-6">
+            <div className="bg-white/5 rounded-xl p-5 border border-white/10">
+              <p className="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-3">Your Submission</p>
+              <p className="text-white font-bold">{formData.projectTitle}</p>
+              <p className="text-slate-400 text-sm">{categoryLabels[formData.category]} &mdash; {formData.name}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-slate-300 mb-6 leading-relaxed">
+                Click the button below to pay your <span className="text-cyan-400 font-bold">$5 entry fee</span> via PayPal. It will open in a new tab. Once payment is complete, return here to confirm.
               </p>
-
-              {!isFormValid && (
-                <p className="text-xs text-amber-400 text-center mb-4 bg-amber-400/10 py-2 rounded-lg">
-                  Please fill in all required fields above to enable payment
-                </p>
+              <div className="flex justify-center mb-6">
+                <form action="https://www.paypal.com/ncp/payment/4ZCXGAS75CST6" method="post" target="_blank" className="inline-grid justify-items-center gap-2" onSubmit={() => setPaymentInitiated(true)}>
+                  <input type="submit" value="Pay $5 via PayPal" className="text-center border-none rounded min-w-[11.625rem] px-8 h-[2.625rem] font-bold bg-[#FFD140] text-black text-base cursor-pointer hover:bg-[#f5c831] transition-colors" />
+                  <img src="https://www.paypalobjects.com/images/Debit_Credit_APM.svg" alt="Accepted payment methods" />
+                  <span className="text-xs text-slate-500">Powered by <img src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg" alt="PayPal" className="h-3.5 inline align-middle" /></span>
+                </form>
+              </div>
+            {!paymentInitiated && (
+                <p className="text-xs text-amber-400 text-center bg-amber-400/10 py-2 px-4 rounded-lg mb-4">You must click the PayPal button above to pay before continuing.</p>
               )}
-
-              {!isPayPalConfigured ? (
-                <div className="text-center py-4 bg-amber-400/10 rounded-lg">
-                  <p className="text-amber-400 text-sm">PayPal is not configured. Please add your PayPal credentials.</p>
+              <div className="space-y-3">
+                <div>
+                  <label htmlFor="txnId" className="block text-xs text-slate-400 uppercase tracking-widest font-semibold mb-2">PayPal Transaction ID</label>
+                  <input
+                    id="txnId"
+                    type="text"
+                    placeholder="e.g., 1AB23456CD789"
+                    value={transactionId}
+                    onChange={(e) => {
+                      setTransactionId(e.target.value)
+                      setError("")
+                    }}
+                    disabled={!paymentInitiated}
+                    className="w-full bg-transparent border border-white/20 focus:border-cyan-400 disabled:border-white/10 disabled:opacity-50 disabled:cursor-not-allowed py-2 px-3 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-mono rounded transition-colors"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Found in your PayPal confirmation email or transaction history</p>
                 </div>
-              ) : (
-                <PayPalButtonWrapper
-                  isFormValid={isFormValid}
-                  isSubmitting={isSubmitting}
-                  paymentCompleted={paymentCompleted}
-                  createOrder={createOrder}
-                  onApprove={onApprove}
-                  onError={(err) => {
-                    console.error("[v0] PayPal error:", err)
-                    setError("Payment failed. Please try again.")
-                  }}
-                />
-              )}
-
-              {isSubmitting && (
-                <p className="text-cyan-400 text-sm text-center mt-4 flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Submitting your entry...
-                </p>
-              )}
+                {error && <p className="text-red-400 text-sm text-center bg-red-400/10 py-2 rounded-lg">{error}</p>}
+                <button
+                  type="button"
+                  onClick={handleIHavePaid}
+                  disabled={!paymentInitiated || !transactionId.trim() || isVerifyingPayment}
+                  className="w-full py-3 border border-cyan-400/40 hover:border-cyan-400 disabled:border-white/10 disabled:text-slate-600 disabled:cursor-not-allowed text-cyan-400 font-black uppercase tracking-[0.2em] text-sm rounded-lg transition-colors"
+                >
+                  {isVerifyingPayment ? "Verifying Payment..." : "Verify & Continue"}
+                </button>
+              </div>
             </div>
-          </form>
+            <button type="button" onClick={() => setStep("form")} className="w-full text-xs text-slate-500 hover:text-slate-300 transition-colors py-2">Back to project details</button>
+          </div>
+        )}
+
+        {step === "confirm" && (
+          <div className="space-y-6">
+            <div className="bg-cyan-400/5 border border-cyan-400/20 rounded-xl p-5 text-center">
+              <p className="text-cyan-400 font-black uppercase tracking-widest text-sm mb-2">✓ Payment Verified</p>
+              <p className="text-slate-300 text-sm leading-relaxed">Your PayPal payment has been confirmed. Complete your submission now.</p>
+            </div>
+            {error && <p className="text-red-400 text-sm text-center bg-red-400/10 py-2 rounded-lg">{error}</p>}
+            <button 
+              type="button" 
+              onClick={handleSubmit} 
+              disabled={isSubmitting} 
+              className="w-full py-3 bg-cyan-400 hover:bg-cyan-300 disabled:bg-white/10 disabled:text-slate-500 disabled:cursor-not-allowed text-black font-black uppercase tracking-[0.2em] text-sm rounded-lg transition-colors"
+            >
+              {isSubmitting ? "Submitting..." : "Submit My Entry"}
+            </button>
+            <button 
+              type="button" 
+              onClick={() => {
+                setStep("pay")
+                setTransactionId("")
+                setPaymentConfirmed(false)
+                setError("")
+              }} 
+              className="w-full text-xs text-slate-500 hover:text-slate-300 transition-colors py-2"
+            >
+              Back to payment
+            </button>
+          </div>
+        )}
+
+        {step === "done" && (
+          <div className="text-center py-8">
+            <p className="text-4xl font-black uppercase tracking-[-0.02em] text-white mb-3" style={{ textShadow: "0 0 30px rgba(0, 200, 255, 0.5)" }}>You&apos;re In.</p>
+            <p className="text-gray-400 text-sm leading-relaxed mb-6">Your submission has been received. Drawing takes place May 3, 2026 &mdash; we&apos;ll be in touch.</p>
+            <div className="bg-gradient-to-r from-cyan-400/10 to-cyan-400/5 border border-cyan-400/30 rounded-lg p-4">
+              <p className="text-xs text-cyan-300 uppercase tracking-widest font-semibold mb-2">What&apos;s Next</p>
+              <p className="text-sm text-slate-300">Winners will be announced on <span className="text-cyan-400 font-bold">May 3, 2026</span></p>
+            </div>
+          </div>
         )}
       </div>
     </section>

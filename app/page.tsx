@@ -3,7 +3,6 @@ import { Hero } from "@/components/hero"
 import { OpportunitySection } from "@/components/opportunity-section"
 import { GuaranteeSection } from "@/components/guarantee-section"
 import { SubmitForm } from "@/components/submit-form"
-import { PayPalProvider } from "@/components/paypal-provider"
 import { Footer } from "@/components/footer"
 
 export default function Page() {
@@ -13,9 +12,7 @@ export default function Page() {
       <Hero />
       <OpportunitySection />
       <GuaranteeSection />
-      <PayPalProvider>
-        <SubmitForm />
-      </PayPalProvider>
+      <SubmitForm />
       <Footer />
     </main>
   )
