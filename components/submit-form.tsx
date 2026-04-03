@@ -30,7 +30,8 @@ export function SubmitForm() {
   const [success, setSuccess] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
 
-  const [{ isPending: isPayPalPending }] = usePayPalScriptReducer()
+  const [{ isPending: isPayPalPending, isResolved: isPayPalReady }] = usePayPalScriptReducer()
+  const isPayPalConfigured = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID && process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID !== "sb"
 
   const categoryLabels: Record<string, string> = {
     film: "Short Film",
@@ -299,7 +300,11 @@ export function SubmitForm() {
                 </p>
               )}
 
-              {isPayPalPending ? (
+              {!isPayPalConfigured ? (
+                <div className="text-center py-4 bg-amber-400/10 rounded-lg">
+                  <p className="text-amber-400 text-sm">PayPal is not configured. Please add your PayPal credentials.</p>
+                </div>
+              ) : isPayPalPending ? (
                 <div className="flex justify-center py-4">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
                 </div>
