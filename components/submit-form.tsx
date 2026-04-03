@@ -173,7 +173,6 @@ export function SubmitForm() {
       className="py-24 px-6 relative"
       aria-labelledby="submit-heading"
     >
-      {/* Ambient glow */}
       <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none"
         style={{
@@ -181,7 +180,6 @@ export function SubmitForm() {
         }}
       />
 
-      {/* Glass Panel Form */}
       <div className="max-w-xl mx-auto bg-black/50 backdrop-blur-2xl rounded-3xl border border-cyan-400/15 p-10 relative z-10 shadow-[0_0_80px_rgba(0,200,255,0.08),inset_0_1px_0_rgba(255,255,255,0.05)]">
         <p className="text-[11px] font-bold tracking-[0.55em] uppercase text-cyan-400 mb-2 text-center">
           $5 Entry
@@ -194,7 +192,6 @@ export function SubmitForm() {
           Submit Your Project
         </h2>
 
-        {/* Deadline Banner */}
         <div className="bg-gradient-to-r from-cyan-400/10 to-cyan-400/5 border border-cyan-400/30 rounded-lg p-4 mb-8 text-center">
           <p className="text-xs text-cyan-300 uppercase tracking-widest font-semibold mb-1">Submission Deadline</p>
           <p className="text-lg font-black text-cyan-400">April 30, 2026</p>
@@ -231,9 +228,7 @@ export function SubmitForm() {
             )}
 
             <div>
-              <label htmlFor="name" className="sr-only">
-                Full Name or Studio
-              </label>
+              <label htmlFor="name" className="sr-only">Full Name or Studio</label>
               <input
                 id="name"
                 name="name"
@@ -247,9 +242,7 @@ export function SubmitForm() {
             </div>
 
             <div>
-              <label htmlFor="email" className="sr-only">
-                Email
-              </label>
+              <label htmlFor="email" className="sr-only">Email</label>
               <input
                 id="email"
                 name="email"
@@ -263,9 +256,7 @@ export function SubmitForm() {
             </div>
 
             <div>
-              <label htmlFor="projectTitle" className="sr-only">
-                Project Title
-              </label>
+              <label htmlFor="projectTitle" className="sr-only">Project Title</label>
               <input
                 id="projectTitle"
                 name="projectTitle"
@@ -279,9 +270,7 @@ export function SubmitForm() {
             </div>
 
             <div>
-              <label htmlFor="category" className="sr-only">
-                Project Category
-              </label>
+              <label htmlFor="category" className="sr-only">Project Category</label>
               <select
                 id="category"
                 name="category"
@@ -290,28 +279,16 @@ export function SubmitForm() {
                 onChange={handleInputChange}
                 className="w-full bg-black/60 border-b border-white/10 py-3 focus:border-cyan-400 outline-none text-sm text-slate-500 font-semibold tracking-widest transition-colors appearance-none cursor-pointer"
               >
-                <option value="" disabled>
-                  PROJECT CATEGORY
-                </option>
-                <option value="film" className="text-white bg-[#0a0a0a]">
-                  SHORT FILM
-                </option>
-                <option value="game" className="text-white bg-[#0a0a0a]">
-                  VIDEO GAME
-                </option>
-                <option value="doc" className="text-white bg-[#0a0a0a]">
-                  DOCUMENTARY
-                </option>
-                <option value="show" className="text-white bg-[#0a0a0a]">
-                  SHOW PILOT / SERIES
-                </option>
+                <option value="" disabled>PROJECT CATEGORY</option>
+                <option value="film" className="text-white bg-[#0a0a0a]">SHORT FILM</option>
+                <option value="game" className="text-white bg-[#0a0a0a]">VIDEO GAME</option>
+                <option value="doc" className="text-white bg-[#0a0a0a]">DOCUMENTARY</option>
+                <option value="show" className="text-white bg-[#0a0a0a]">SHOW PILOT / SERIES</option>
               </select>
             </div>
 
             <div>
-              <label htmlFor="footage" className="sr-only">
-                Link to footage
-              </label>
+              <label htmlFor="footage" className="sr-only">Link to footage</label>
               <input
                 id="footage"
                 name="footage"
@@ -325,9 +302,7 @@ export function SubmitForm() {
             </div>
 
             <div>
-              <label htmlFor="vibe" className="sr-only">
-                Describe the vibe / story
-              </label>
+              <label htmlFor="vibe" className="sr-only">Describe the vibe / story</label>
               <textarea
                 id="vibe"
                 name="vibe"
@@ -339,7 +314,6 @@ export function SubmitForm() {
               />
             </div>
 
-            {/* PayPal Payment Section */}
             <div className="border-t border-white/5 pt-6 mt-6">
               <p className="text-[11px] text-slate-400 text-center mb-4 uppercase tracking-[0.35em] font-semibold">
                 Pay $5 via PayPal to submit
