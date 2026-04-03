@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { PayPalButtons, usePayPalScriptReducer } from "@paypal/react-paypal-js"
 
 const FORMSPREE_ENDPOINT = "https://formspree.io/f/mvzvbvqr"
 
@@ -14,58 +13,6 @@ interface FormData {
   vibe: string
 }
 
-function PayPalButtonWrapper({ 
-  isFormValid, 
-  isSubmitting, 
-  paymentCompleted, 
-  createOrder, 
-  onApprove, 
-  onError 
-}: { 
-  isFormValid: boolean
-  isSubmitting: boolean
-  paymentCompleted: boolean
-  createOrder: () => Promise<string>
-  onApprove: (data: { orderID: string }) => Promise<void>
-  onError: (err: unknown) => void
-}) {
-  const [{ isPending, isRejected }] = usePayPalScriptReducer()
-
-  if (isPending) {
-    return (
-      <div className="flex justify-center py-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
-      </div>
-    )
-  }
-
-  if (isRejected) {
-    return (
-      <div className="text-center py-4 bg-amber-400/10 rounded-lg">
-        <p className="text-amber-400 text-sm">Failed to load PayPal. Please refresh the page.</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className={`${!isFormValid ? "opacity-50 pointer-events-none" : ""}`}>
-      <PayPalButtons
-        style={{
-          layout: "vertical",
-          color: "gold",
-          shape: "rect",
-          label: "pay",
-          height: 45,
-        }}
-        disabled={!isFormValid || isSubmitting || paymentCompleted}
-        createOrder={createOrder}
-        onApprove={onApprove}
-        onError={onError}
-      />
-    </div>
-  )
-}
-
 export function SubmitForm() {
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -75,14 +22,10 @@ export function SubmitForm() {
     footage: "",
     vibe: "",
   })
-  const [paymentCompleted, setPaymentCompleted] = useState(false)
-  const [transactionId, setTransactionId] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
-
-  const isPayPalConfigured = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID && process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID !== "sb"
 
   const categoryLabels: Record<string, string> = {
     film: "Short Film",
@@ -106,35 +49,14 @@ export function SubmitForm() {
     setError("")
   }
 
-  const createOrder = async () => {
-    const response = await fetch("/api/paypal/create-order", {
-      method: "POST",
-    })
-    const data = await response.json()
-    if (data.error) {
-      throw new Error(data.error)
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!isFormValid) {
+      setError("Please fill in all required fields")
+      return
     }
-    return data.orderId
-  }
 
-  const onApprove = async (data: { orderID: string }) => {
-    const response = await fetch("/api/paypal/capture-order", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId: data.orderID }),
-    })
-    const captureData = await response.json()
-
-    if (captureData.success) {
-      setTransactionId(captureData.transactionId)
-      setPaymentCompleted(true)
-      await submitToFormspree(captureData.transactionId)
-    } else {
-      setError("Payment verification failed. Please try again.")
-    }
-  }
-
-  const submitToFormspree = async (txnId: string) => {
     setIsSubmitting(true)
     try {
       const response = await fetch(FORMSPREE_ENDPOINT, {
@@ -150,18 +72,19 @@ export function SubmitForm() {
           category: categoryLabels[formData.category] || formData.category,
           footageLink: formData.footage,
           description: formData.vibe || "Not provided",
-          paypalTransactionId: txnId,
           submittedAt: new Date().toISOString(),
         }),
       })
 
       if (!response.ok) {
-        setError("Submission failed. Please contact support with your transaction ID: " + txnId)
+        setError("Submission failed. Please try again.")
       } else {
         setSuccess(true)
+        setFormData({ name: "", email: "", projectTitle: "", category: "", footage: "", vibe: "" })
       }
-    } catch {
-      setError("Submission failed. Please contact support with your transaction ID: " + txnId)
+    } catch (err) {
+      console.error("[v0] Form submission error:", err)
+      setError("Submission failed. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
@@ -209,11 +132,6 @@ export function SubmitForm() {
             <p className="text-gray-400 text-sm leading-relaxed mb-6">
               Your submission has been received. Drawing takes place May 3, 2026 — we&apos;ll be in touch.
             </p>
-            {transactionId && (
-              <p className="text-xs text-slate-500 mb-4">
-                Transaction ID: <span className="text-cyan-400">{transactionId}</span>
-              </p>
-            )}
             <div className="bg-gradient-to-r from-cyan-400/10 to-cyan-400/5 border border-cyan-400/30 rounded-lg p-4">
               <p className="text-xs text-cyan-300 uppercase tracking-widest font-semibold mb-2">What&apos;s Next</p>
               <p className="text-sm text-slate-300">
@@ -222,7 +140,7 @@ export function SubmitForm() {
             </div>
           </div>
         ) : (
-          <form ref={formRef} className="space-y-5">
+          <form ref={formRef} onSubmit={handleFormSubmit} className="space-y-5">
             {error && (
               <p className="text-red-400 text-sm text-center bg-red-400/10 py-2 rounded-lg">{error}</p>
             )}
@@ -316,42 +234,29 @@ export function SubmitForm() {
 
             <div className="border-t border-white/5 pt-6 mt-6">
               <p className="text-[11px] text-slate-400 text-center mb-4 uppercase tracking-[0.35em] font-semibold">
-                Pay $5 via PayPal to submit
+                Complete your submission
               </p>
 
               {!isFormValid && (
                 <p className="text-xs text-amber-400 text-center mb-4 bg-amber-400/10 py-2 rounded-lg">
-                  Please fill in all required fields above to enable payment
+                  Please fill in all required fields above to submit
                 </p>
               )}
 
-              {!isPayPalConfigured ? (
-                <div className="text-center py-4 bg-amber-400/10 rounded-lg">
-                  <p className="text-amber-400 text-sm">PayPal is not configured. Please add your PayPal credentials.</p>
-                </div>
-              ) : (
-                <PayPalButtonWrapper
-                  isFormValid={isFormValid}
-                  isSubmitting={isSubmitting}
-                  paymentCompleted={paymentCompleted}
-                  createOrder={createOrder}
-                  onApprove={onApprove}
-                  onError={(err) => {
-                    console.error("[v0] PayPal error:", err)
-                    setError("Payment failed. Please try again.")
-                  }}
-                />
-              )}
+              <button
+                type="submit"
+                disabled={!isFormValid || isSubmitting}
+                className="w-full py-3 px-4 bg-cyan-400 hover:bg-cyan-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-slate-900 font-bold uppercase tracking-widest rounded-lg transition-colors text-sm"
+              >
+                {isSubmitting ? "Submitting..." : "Submit Your Entry"}
+              </button>
 
-              {isSubmitting && (
-                <p className="text-cyan-400 text-sm text-center mt-4 flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Submitting your entry...
+              <div className="mt-6 pt-6 border-t border-white/5">
+                <p className="text-[11px] text-slate-400 text-center mb-4 uppercase tracking-[0.35em] font-semibold">
+                  Pay $5 via PayPal
                 </p>
-              )}
+                <div id="paypal-button-container" className="paypal-container"></div>
+              </div>
             </div>
           </form>
         )}
@@ -359,3 +264,4 @@ export function SubmitForm() {
     </section>
   )
 }
+
