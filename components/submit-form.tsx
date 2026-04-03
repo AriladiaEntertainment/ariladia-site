@@ -14,6 +14,58 @@ interface FormData {
   vibe: string
 }
 
+function PayPalButtonWrapper({ 
+  isFormValid, 
+  isSubmitting, 
+  paymentCompleted, 
+  createOrder, 
+  onApprove, 
+  onError 
+}: { 
+  isFormValid: boolean
+  isSubmitting: boolean
+  paymentCompleted: boolean
+  createOrder: () => Promise<string>
+  onApprove: (data: { orderID: string }) => Promise<void>
+  onError: (err: unknown) => void
+}) {
+  const [{ isPending, isRejected }] = usePayPalScriptReducer()
+
+  if (isPending) {
+    return (
+      <div className="flex justify-center py-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+      </div>
+    )
+  }
+
+  if (isRejected) {
+    return (
+      <div className="text-center py-4 bg-amber-400/10 rounded-lg">
+        <p className="text-amber-400 text-sm">Failed to load PayPal. Please refresh the page.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`${!isFormValid ? "opacity-50 pointer-events-none" : ""}`}>
+      <PayPalButtons
+        style={{
+          layout: "vertical",
+          color: "gold",
+          shape: "rect",
+          label: "pay",
+          height: 45,
+        }}
+        disabled={!isFormValid || isSubmitting || paymentCompleted}
+        createOrder={createOrder}
+        onApprove={onApprove}
+        onError={onError}
+      />
+    </div>
+  )
+}
+
 export function SubmitForm() {
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -30,7 +82,6 @@ export function SubmitForm() {
   const [success, setSuccess] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
 
-  const [{ isPending: isPayPalPending, isResolved: isPayPalReady }] = usePayPalScriptReducer()
   const isPayPalConfigured = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID && process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID !== "sb"
 
   const categoryLabels: Record<string, string> = {
@@ -304,29 +355,18 @@ export function SubmitForm() {
                 <div className="text-center py-4 bg-amber-400/10 rounded-lg">
                   <p className="text-amber-400 text-sm">PayPal is not configured. Please add your PayPal credentials.</p>
                 </div>
-              ) : isPayPalPending ? (
-                <div className="flex justify-center py-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
-                </div>
               ) : (
-                <div className={`${!isFormValid ? "opacity-50 pointer-events-none" : ""}`}>
-                  <PayPalButtons
-                    style={{
-                      layout: "vertical",
-                      color: "gold",
-                      shape: "rect",
-                      label: "pay",
-                      height: 45,
-                    }}
-                    disabled={!isFormValid || isSubmitting || paymentCompleted}
-                    createOrder={createOrder}
-                    onApprove={onApprove}
-                    onError={(err) => {
-                      console.error("[v0] PayPal error:", err)
-                      setError("Payment failed. Please try again.")
-                    }}
-                  />
-                </div>
+                <PayPalButtonWrapper
+                  isFormValid={isFormValid}
+                  isSubmitting={isSubmitting}
+                  paymentCompleted={paymentCompleted}
+                  createOrder={createOrder}
+                  onApprove={onApprove}
+                  onError={(err) => {
+                    console.error("[v0] PayPal error:", err)
+                    setError("Payment failed. Please try again.")
+                  }}
+                />
               )}
 
               {isSubmitting && (
