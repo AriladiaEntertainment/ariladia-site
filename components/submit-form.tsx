@@ -27,7 +27,7 @@ export function SubmitForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
-  const formRef = useRef<HTMLFormElement>(null)
+  const formRef = useRef<HTMLDivElement>(null)
 
   const categoryLabels: Record<string, string> = {
     film: "Short Film",
@@ -142,7 +142,7 @@ export function SubmitForm() {
             </div>
           </div>
         ) : (
-          <form ref={formRef} className="space-y-5">
+          <div ref={formRef} className="space-y-5">
             {error && (
               <p className="text-red-400 text-sm text-center bg-red-400/10 py-2 rounded-lg">{error}</p>
             )}
@@ -269,21 +269,33 @@ export function SubmitForm() {
               )}
 
               <div className="flex justify-center">
-                <div
-                  dangerouslySetInnerHTML={{
-                    __html: `<div>
-                      <style>.pp-4ZCXGAS75CST6{text-align:center;border:none;border-radius:0.25rem;min-width:11.625rem;padding:0 2rem;height:2.625rem;font-weight:bold;background-color:#FFD140;color:#000000;font-family:"Helvetica Neue",Arial,sans-serif;font-size:1rem;line-height:1.25rem;cursor:pointer;}</style>
-                      <form action="https://www.paypal.com/ncp/payment/4ZCXGAS75CST6" method="post" target="_blank" style="display:inline-grid;justify-items:center;align-content:start;gap:0.5rem;">
-                        <input class="pp-4ZCXGAS75CST6" type="submit" value="Buy Now" />
-                        <img src="https://www.paypalobjects.com/images/Debit_Credit_APM.svg" alt="cards" />
-                        <section style="font-size: 0.75rem;"> Powered by <img src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg" alt="paypal" style="height:0.875rem;vertical-align:middle;"/></section>
-                      </form>
-                    </div>`,
-                  }}
-                />
+                <form 
+                  action="https://www.paypal.com/ncp/payment/4ZCXGAS75CST6" 
+                  method="post" 
+                  target="_blank" 
+                  className="inline-grid justify-items-center content-start gap-2"
+                >
+                  <input 
+                    type="submit" 
+                    value="Buy Now" 
+                    className="text-center border-none rounded min-w-[11.625rem] px-8 h-[2.625rem] font-bold bg-[#FFD140] text-black font-sans text-base leading-5 cursor-pointer hover:bg-[#f5c831] transition-colors"
+                  />
+                  <img 
+                    src="https://www.paypalobjects.com/images/Debit_Credit_APM.svg" 
+                    alt="Accepted payment methods" 
+                  />
+                  <span className="text-xs text-slate-400">
+                    Powered by{" "}
+                    <img 
+                      src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg" 
+                      alt="PayPal" 
+                      className="h-3.5 inline align-middle"
+                    />
+                  </span>
+                </form>
               </div>
             </div>
-          </form>
+          </div>
         )}
       </div>
     </section>
