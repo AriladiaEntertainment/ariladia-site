@@ -34,6 +34,8 @@ export function SubmitForm() {
   })
   const [paymentConfirmed, setPaymentConfirmed] = useState(false)
   const [paymentInitiated, setPaymentInitiated] = useState(false)
+  const [transactionId, setTransactionId] = useState("")
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
 
@@ -60,8 +62,32 @@ export function SubmitForm() {
     setStep("pay")
   }
 
-  const handleIHavePaid = () => {
-    setStep("confirm")
+  const handleIHavePaid = async () => {
+    if (!transactionId.trim()) {
+      setError("Please enter your PayPal Transaction ID")
+      return
+    }
+    setIsVerifyingPayment(true)
+    setError("")
+    try {
+      const response = await fetch("/api/verify-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transactionId }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        setPaymentConfirmed(true)
+        setStep("confirm")
+      } else {
+        setError(data.error || "Payment verification failed.")
+      }
+    } catch (err) {
+      console.error("[v0] Verification error:", err)
+      setError("Failed to verify payment. Please try again.")
+    } finally {
+      setIsVerifyingPayment(false)
+    }
   }
 
   const handleSubmit = async () => {
@@ -192,12 +218,36 @@ export function SubmitForm() {
                   <span className="text-xs text-slate-500">Powered by <img src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg" alt="PayPal" className="h-3.5 inline align-middle" /></span>
                 </form>
               </div>
-              {!paymentInitiated && (
+            {!paymentInitiated && (
                 <p className="text-xs text-amber-400 text-center bg-amber-400/10 py-2 px-4 rounded-lg mb-4">You must click the PayPal button above to pay before continuing.</p>
               )}
-              <button type="button" onClick={handleIHavePaid} disabled={!paymentInitiated} className="w-full py-3 border border-cyan-400/40 hover:border-cyan-400 disabled:border-white/10 disabled:text-slate-600 disabled:cursor-not-allowed text-cyan-400 font-black uppercase tracking-[0.2em] text-sm rounded-lg transition-colors">
-                I&apos;ve Completed Payment
-              </button>
+              <div className="space-y-3">
+                <div>
+                  <label htmlFor="txnId" className="block text-xs text-slate-400 uppercase tracking-widest font-semibold mb-2">PayPal Transaction ID</label>
+                  <input
+                    id="txnId"
+                    type="text"
+                    placeholder="e.g., 1AB23456CD789"
+                    value={transactionId}
+                    onChange={(e) => {
+                      setTransactionId(e.target.value)
+                      setError("")
+                    }}
+                    disabled={!paymentInitiated}
+                    className="w-full bg-transparent border border-white/20 focus:border-cyan-400 disabled:border-white/10 disabled:opacity-50 disabled:cursor-not-allowed py-2 px-3 outline-none text-sm text-slate-100 placeholder:text-slate-500 font-mono rounded transition-colors"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Found in your PayPal confirmation email or transaction history</p>
+                </div>
+                {error && <p className="text-red-400 text-sm text-center bg-red-400/10 py-2 rounded-lg">{error}</p>}
+                <button
+                  type="button"
+                  onClick={handleIHavePaid}
+                  disabled={!paymentInitiated || !transactionId.trim() || isVerifyingPayment}
+                  className="w-full py-3 border border-cyan-400/40 hover:border-cyan-400 disabled:border-white/10 disabled:text-slate-600 disabled:cursor-not-allowed text-cyan-400 font-black uppercase tracking-[0.2em] text-sm rounded-lg transition-colors"
+                >
+                  {isVerifyingPayment ? "Verifying Payment..." : "Verify & Continue"}
+                </button>
+              </div>
             </div>
             <button type="button" onClick={() => setStep("form")} className="w-full text-xs text-slate-500 hover:text-slate-300 transition-colors py-2">Back to project details</button>
           </div>
@@ -206,20 +256,30 @@ export function SubmitForm() {
         {step === "confirm" && (
           <div className="space-y-6">
             <div className="bg-cyan-400/5 border border-cyan-400/20 rounded-xl p-5 text-center">
-              <p className="text-cyan-400 font-black uppercase tracking-widest text-sm mb-1">Almost there</p>
-              <p className="text-slate-300 text-sm leading-relaxed">Please confirm your PayPal payment was successful before we lock in your entry.</p>
+              <p className="text-cyan-400 font-black uppercase tracking-widest text-sm mb-2">✓ Payment Verified</p>
+              <p className="text-slate-300 text-sm leading-relaxed">Your PayPal payment has been confirmed. Complete your submission now.</p>
             </div>
             {error && <p className="text-red-400 text-sm text-center bg-red-400/10 py-2 rounded-lg">{error}</p>}
-            <label className="flex items-start gap-3 cursor-pointer group">
-              <input type="checkbox" checked={paymentConfirmed} onChange={(e) => { setPaymentConfirmed(e.target.checked); setError(""); }} className="mt-0.5 w-4 h-4 accent-cyan-400 cursor-pointer" />
-              <span className="text-sm text-slate-300 leading-relaxed group-hover:text-white transition-colors">
-                I confirm I have completed the <span className="text-cyan-400 font-semibold">$5 PayPal payment</span> for my submission of <span className="text-white font-semibold">{formData.projectTitle}</span>.
-              </span>
-            </label>
-            <button type="button" onClick={handleSubmit} disabled={!paymentConfirmed || isSubmitting} className="w-full py-3 bg-cyan-400 hover:bg-cyan-300 disabled:bg-white/10 disabled:text-slate-500 disabled:cursor-not-allowed text-black font-black uppercase tracking-[0.2em] text-sm rounded-lg transition-colors">
+            <button 
+              type="button" 
+              onClick={handleSubmit} 
+              disabled={isSubmitting} 
+              className="w-full py-3 bg-cyan-400 hover:bg-cyan-300 disabled:bg-white/10 disabled:text-slate-500 disabled:cursor-not-allowed text-black font-black uppercase tracking-[0.2em] text-sm rounded-lg transition-colors"
+            >
               {isSubmitting ? "Submitting..." : "Submit My Entry"}
             </button>
-            <button type="button" onClick={() => setStep("pay")} className="w-full text-xs text-slate-500 hover:text-slate-300 transition-colors py-2">Back to payment</button>
+            <button 
+              type="button" 
+              onClick={() => {
+                setStep("pay")
+                setTransactionId("")
+                setPaymentConfirmed(false)
+                setError("")
+              }} 
+              className="w-full text-xs text-slate-500 hover:text-slate-300 transition-colors py-2"
+            >
+              Back to payment
+            </button>
           </div>
         )}
 
