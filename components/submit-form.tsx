@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 
-const FORMSPREE_ENDPOINT = "https://formspree.io/f/mvzvbvqr" // updated
+const FORMSPREE_ENDPOINT = "https://formspree.io/f/mvzvbvqr"
 
 interface FormData {
   name: string
@@ -33,6 +33,7 @@ export function SubmitForm() {
     vibe: "",
   })
   const [paymentConfirmed, setPaymentConfirmed] = useState(false)
+  const [paymentInitiated, setPaymentInitiated] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
 
@@ -238,6 +239,7 @@ export function SubmitForm() {
                   method="post"
                   target="_blank"
                   className="inline-grid justify-items-center gap-2"
+                  onSubmit={() => setPaymentInitiated(true)}
                 >
                   <input
                     type="submit"
@@ -255,10 +257,16 @@ export function SubmitForm() {
                   </span>
                 </form>
               </div>
+              {!paymentInitiated && (
+                <p className="text-xs text-amber-400 text-center bg-amber-400/10 py-2 px-4 rounded-lg">
+                  You must click the PayPal button above to pay before continuing.
+                </p>
+              )}
               <button
                 type="button"
                 onClick={handleIHavePaid}
-                className="w-full py-3 border border-cyan-400/40 hover:border-cyan-400 text-cyan-400 font-black uppercase tracking-[0.2em] text-sm rounded-lg transition-colors"
+                disabled={!paymentInitiated}
+                className="w-full py-3 border border-cyan-400/40 hover:border-cyan-400 disabled:border-white/10 disabled:text-slate-600 disabled:cursor-not-allowed text-cyan-400 font-black uppercase tracking-[0.2em] text-sm rounded-lg transition-colors"
               >
                 I&apos;ve Completed Payment
               </button>
